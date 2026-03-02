@@ -1,2 +1,40 @@
 # Google App Engine generated folder
 appengine-generated/
+import yfinance as yf
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import time
+
+analyzer = SentimentIntensityAnalyzer()
+
+def get_market_data(symbol):
+    # Fetch the last 5 hours of data in 1-hour chunks
+    ticker = yf.Ticker(symbol)
+    df = ticker.history(period="1d", interval="1h")
+    return df
+
+def combined_strategy(symbol, headline):
+    # 1. Analyze Sentiment
+    score = analyzer.polarity_scores(headline)['compound']
+    
+    # 2. Analyze Price (Current Price vs 5-hour Average)
+    data = get_market_data(symbol)
+    current_price = data['Close'].iloc[-1]
+    avg_price = data['Close'].mean()
+    
+    print(f"--- Analysis for {symbol} ---")
+    print(f"Headline Score: {score}")
+    print(f"Price: ${current_price:.2f} (Avg: ${avg_price:.2f})")
+
+    # 3. The "Double-Check" Logic
+    # We only buy if news is POSITIVE AND price is ABOVE average
+    if score > 0.05 and current_price > avg_price:
+        return "CONFIRMED BUY 🟢"
+    # We only sell if news is NEGATIVE AND price is BELOW average
+    elif score < -0.05 and current_price < avg_price:
+        return "CONFIRMED SELL 🔴"
+    else:
+        return "WAIT/NO SIGNAL ⚪"
+
+# Example Test
+test_headline = "Analysts upgrade stock outlook following massive growth"
+print(f"Final Decision: {combined_strategy('AAPL', test_headline)}")
